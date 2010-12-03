@@ -1,0 +1,7 @@
+For a long time I've wanted to sync my Remind files with google calendar so
+that they'd be propagated to my other devices. There exists a python script for
+that, but it's unfunctional for me at the moment. This gave me the motivation
+to try to interact with google calendar api with haskell. This gives me a
+chance to hone my haskell.
+
+There is no guarantee for ever finishing this.
