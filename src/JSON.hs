@@ -29,7 +29,7 @@ data CalendarList = CalendarList {
     apiVersion :: String
   , cdata :: Data } deriving Show
 instance JSON CalendarList where
-  showJSON = makeObj' [
+  showJSON = makeObj . joinWithData' [
       ("apiVersion", showJSON . apiVersion)
     , ("data", showJSON . cdata)]
   readJSON (JSObject o) =
@@ -46,7 +46,7 @@ data Data = Data {
   , dcanPost :: Bool
   , ditems :: [Item] } deriving Show
 instance JSON Data where
-  showJSON = makeObj' [
+  showJSON = makeObj . joinWithData' [
       ("kind", showJSON . dkind)
     , ("etag", showJSON . detag)
     , ("id", showJSON . did')
@@ -68,7 +68,7 @@ instance JSON Data where
       <*> is assoc "selfLink"
       <*> is assoc "canPost"
       <*> is assoc "items"
-data Author = Author { 
+data Author = Author {
     displayName :: String
   , email :: Maybe String } 
   deriving Show
@@ -86,8 +86,9 @@ data Item = Item {
   , created :: String -- timestamp
   , iupdated :: String -- timestamp
   , title :: String
+  , details :: Maybe String
   , eventFeedLink :: String
-  , accessControlListLink :: String
+  , accessControlListLink :: Maybe String
   , selfLink :: String
   , canEdit :: Bool
   , author :: Author
@@ -95,11 +96,11 @@ data Item = Item {
   , color :: String
   , hidden :: Bool
   , selected :: Bool
-  , timezone :: String
-  , location :: String
+  , timeZone :: String
+  , location :: Maybe String
   , timesCleaned :: Int} deriving Show
 instance JSON Item where
-  showJSON = makeObj' [
+  showJSON d = makeObj $ joinWithData' [
       ("kind", showJSON . ikind)
     , ("etag", showJSON . ietag)
     , ("id", showJSON . eid')
@@ -107,7 +108,6 @@ instance JSON Item where
     , ("updated", showJSON . iupdated)
     , ("title", showJSON . title)
     , ("eventFeedLink", showJSON . eventFeedLink)
-    , ("accessControlListLink", showJSON . accessControlListLink)
     , ("selfLink", showJSON . selfLink)
     , ("canEdit", showJSON . canEdit)
     , ("author", showJSON . author)
@@ -115,9 +115,12 @@ instance JSON Item where
     , ("color", showJSON . color)
     , ("hidden", showJSON . hidden)
     , ("selected", showJSON . selected)
-    , ("timezone", showJSON . timezone)
-    , ("location", showJSON . location)
+    , ("timeZone", showJSON . timeZone)
     , ("timesCleaned", showJSON . timesCleaned)
+    ] d ?+ [
+      ("details", details d)
+    , ("accessControlListLink", accessControlListLink d)
+    , ("location", location d)
     ]
   readJSON (JSObject o) =
     let assoc = M.fromList $ fromJSObject o
@@ -128,8 +131,9 @@ instance JSON Item where
       <*> is assoc "created"
       <*> is assoc "updated"
       <*> is assoc "title"
+      <*> mightbe assoc "details"
       <*> is assoc "eventFeedLink"
-      <*> is assoc "accessControlListLink"
+      <*> mightbe assoc "accessControlListLink"
       <*> is assoc "selfLink"
       <*> is assoc "canEdit"
       <*> is assoc "author"
@@ -137,32 +141,13 @@ instance JSON Item where
       <*> is assoc "color"
       <*> is assoc "hidden"
       <*> is assoc "selected"
-      <*> is assoc "timezone"
-      <*> is assoc "location"
+      <*> is assoc "timeZone"
+      <*> mightbe assoc "location"
       <*> is assoc "timesCleaned"
-item = Item 
-  "calendar#calendar" 
-  "W/\"Ck4FQX47eCp7IWA9WxBaFEk.\""
-  "http://www.google.com/calendar/feeds/default/calendars/full/user%40google.com"
-  "2010-03-29T13:12:38.877Z"
-  "2010-03-24T13:12:38.877Z"
-  "My Primary Calendar"
-  "https://www.google.com/calendar/feeds/user%40gmail.com/private/full"
-  "https://www.google.com/calendar/feeds/user%40gmail.com/acl/full"
-  "https://www.google.com/calendar/feeds/default/allcalendars/full/user%40gmail.com"
-  True
-  (Author "Coach" (Just "user@gmail.com"))
-  "owner"
-  "#000000"
-  False
-  True
-  "America/Los_Angeles"
-  "Moutani View"
-  0
 
 {- Helper methods -}
 
-makeObj' xs d = makeObj $ map (\(k, x) -> (k, x d)) xs
+joinWithData' xs d = map (\(k, x) -> (k, x d)) xs
 
 mlookup :: (JSON a, Ord k) => Map k JSValue -> k -> Maybe (Result a)
 mlookup assoc key = readJSON `fmap` M.lookup key assoc
